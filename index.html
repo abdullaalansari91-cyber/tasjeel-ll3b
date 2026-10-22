@@ -537,12 +537,49 @@ const score=p=>Number(ratingOf(p).level||3)+(ratingOf(p).star?1.5:0)+(ratingOf(p
 const assign=(pool,black,white,limit)=>{for(const p of [...pool].sort((a,b)=>score(b)-score(a))){const penalty=(team,other)=>{const sum=t=>t.reduce((v,x)=>v+score(x),0),experienced=t=>t.filter(x=>ratingOf(x).experienced).length;const r=roles(p),counts=t=>t.reduce((v,x)=>v.map((n,i)=>n+roles(x)[i]),[0,0,0]);const a=counts(team),b=counts(other);return Math.abs(sum(team)+score(p)-sum(other))*3+Math.abs(experienced(team)+(ratingOf(p).experienced?1:0)-experienced(other))*2+a.reduce((v,n,i)=>v+Math.abs(n+r[i]-b[i]),0)*2+team.length*5};const target=black.length>=limit?white:white.length>=limit?black:penalty(black,white)<=penalty(white,black)?black:white;target.push(p)}};
 const black=[],white=[],blackReserve=[],whiteReserve=[];assign(ps.slice(0,16),black,white,8);assign(ps.slice(16),blackReserve,whiteReserve,Math.ceil(Math.max(0,ps.length-16)/2));draftTeams={black:[...black,...blackReserve].map(p=>p.id),white:[...white,...whiteReserve].map(p=>p.id)};drawDraft();}
 function drawDraft(){const root=$('teamEditor');root.replaceChildren();if(!draftTeams||!isAdmin())return;
-for(const [key,title] of [['black','⚫ الأسود'],['white','⚪ الأبيض']]){const panel=document.createElement('div');const h=document.createElement('h3');h.textContent=title;panel.append(h);for(const [i,id] of draftTeams[key].entries()){const p=roundPlayers().find(x=>x.id===id);if(!p)continue;const line=document.createElement('div');line.className='line';const name=document.createElement('span');name.textContent=(i<8?'أساسي: ':'احتياط: ')+p.name+(ratingOf(p).star?' ⭐ نجم الفريق':'')+(ratingOf(p).experienced?' • لاعب خبرة':'');const btn=document.createElement('button');btn.className='small alt';btn.textContent='نقل للفريق الثاني';btn.onclick=()=>{const other=key==='black'?'white':'black';const max=8+Math.ceil((capacity()-16)/2);if(draftTeams[other].length>=max)return notify('الفريق الثاني وصل الحد المسموح.',true);draftTeams[key]=draftTeams[key].filter(x=>x!==id);draftTeams[other].push(id);drawDraft()};line.append(name,btn);panel.append(line)}root.append(panel)}}
+for(const [key,title] of [['black','⚫ الأسود'],['white','⚪ الأبيض']]){const panel=document.createElement('div');const h=document.createElement('h3');h.textContent=title;panel.append(h);for(const [i,id] of draftTeams[key].entries()){const p=roundPlayers().find(x=>x.id===id);if(!p)continue;const line=document.createElement('div');line.className='line';const name=document.createElement('span');name.textContent=(i<8?'أساسي: ':'احتياط: ')+p.name;const btn=document.createElement('button');btn.className='small alt';btn.textContent='نقل للفريق الثاني';btn.onclick=()=>{const other=key==='black'?'white':'black';const max=8+Math.ceil((capacity()-16)/2);if(draftTeams[other].length>=max)return notify('الفريق الثاني وصل الحد المسموح.',true);draftTeams[key]=draftTeams[key].filter(x=>x!==id);draftTeams[other].push(id);drawDraft()};line.append(name,btn);panel.append(line)}root.append(panel)}}
 $('smartTeams').onclick=smartDraft;
-$('publishTeams').onclick=async()=>{if(!isAdmin()||!draftTeams)return notify('قسّم الفرق أولاً.',true);const stars=roundPlayers().filter(p=>ratingOf(p).star).map(p=>p.id);if(stars.length>2)return notify('حد أقصى نجمين فقط.',true);if(!confirm('تنشر الأساسيين والاحتياط للجميع؟'))return;try{await setDoc(doc(db,'publishedTeams',match.round),{round:match.round,black:draftTeams.black,white:draftTeams.white,stars,experienced:roundPlayers().filter(p=>ratingOf(p).experienced).map(p=>p.id),updatedAt:serverTimestamp(),publishedBy:user.uid});notify('تم نشر التشكيلة مع الاحتياط.')}catch(e){notify('تعذر نشر التشكيلة: '+e.message,true)}};
+$('publishTeams').onclick=async()=>{if(!isAdmin()||!draftTeams)return notify('قسّم الفرق أولاً.',true);const stars=roundPlayers().filter(p=>ratingOf(p).star).map(p=>p.id);if(stars.length>2)return notify('حد أقصى نجمين فقط.',true);if(!confirm('تنشر الأساسيين والاحتياط للجميع؟'))return;try{await setDoc(doc(db,'publishedTeams',match.round),{round:match.round,black:draftTeams.black,white:draftTeams.white,updatedAt:serverTimestamp(),publishedBy:user.uid});notify('تم نشر التشكيلة مع الاحتياط.')}catch(e){notify('تعذر نشر التشكيلة: '+e.message,true)}};
 function drawPublished(){const root=$('publishedTeams');root.replaceChildren();if(!teamState){root.textContent='ما فيه تشكيلة منشورة للحين.';return}
-for(const [key,title] of [['black','⚫ الفريق الأسود'],['white','⚪ الفريق الأبيض']]){const col=document.createElement('div'),h=document.createElement('h3');h.textContent=title;col.append(h);for(const [i,id] of (teamState[key]||[]).entries()){const p=players.find(x=>x.id===id);const line=document.createElement('div');line.className='line';line.textContent=(i+1)+' — '+(p?.name||'لاعب غير متاح')+' — '+(i<8?'أساسي':'احتياط')+((teamState.stars||[]).includes(id)?' ⭐ نجم الفريق':'')+((teamState.experienced||[]).includes(id)?' • لاعب خبرة':'');col.append(line)}const g=document.createElement('div');g.textContent='🧤 حارس الملعب';col.append(g);root.append(col)}}
-$('downloadTeams').onclick=()=>{if(!teamState)return notify('ما فيه تشكيلة منشورة.',true);const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1900;const c=canvas.getContext('2d');c.fillStyle='#101c30';c.fillRect(0,0,1080,1900);c.fillStyle='#e6f6fa';c.textAlign='right';c.font='bold 54px Tahoma';c.fillText('⚽ تسجيل للعب — التشكيلة',1000,110);c.font='32px Tahoma';c.fillText(match?.date||'',1000,170);let y=245;for(const [key,title] of [['black','⚫ الفريق الأسود'],['white','⚪ الفريق الأبيض']]){c.fillStyle='#4fd1bb';c.font='bold 39px Tahoma';c.fillText(title,1000,y);y+=52;c.fillStyle='#e6f6fa';c.font='29px Tahoma';for(const [i,id] of (teamState[key]||[]).entries()){const p=players.find(x=>x.id===id);const line=(i+1)+' - '+(p?.name||'لاعب')+' ('+(i<8?'أساسي':'احتياط')+')'+((teamState.stars||[]).includes(id)?' ⭐':'');c.fillText(line,1000,y);y+=38}c.fillText('حارس الملعب',1000,y);y+=90}const a=document.createElement('a');a.download='tasjeel-teams.png';a.href=canvas.toDataURL('image/png');a.click()};
+for(const [key,title] of [['black','⚫ الفريق الأسود'],['white','⚪ الفريق الأبيض']]){const col=document.createElement('div'),h=document.createElement('h3');h.textContent=title;col.append(h);for(const [i,id] of (teamState[key]||[]).entries()){const p=players.find(x=>x.id===id);const line=document.createElement('div');line.className='line';line.textContent=(i+1)+' — '+(p?.name||'لاعب غير متاح')+' — '+(i<8?'أساسي':'احتياط');col.append(line)}const g=document.createElement('div');g.textContent='🧤 حارس الملعب';col.append(g);root.append(col)}}
+// iOS Safari often ignores programmatic download links. Offer native share, then a new image tab.
+$('downloadTeams').onclick=async()=>{
+ if(!teamState)return notify('ما فيه تشكيلة منشورة.',true);
+ const btn=$('downloadTeams');btn.disabled=true;
+ try{
+  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1650;
+  const c=canvas.getContext('2d');if(!c)throw new Error('تعذر إنشاء الصورة');
+  c.fillStyle='#101c30';c.fillRect(0,0,1080,1650);
+  c.textAlign='right';c.direction='rtl';c.fillStyle='#e6f6fa';
+  c.font='bold 52px Tahoma, sans-serif';c.fillText('تسجيل للعب - التشكيلة',1000,100);
+  c.font='30px Tahoma, sans-serif';c.fillText(match?.date||'',1000,155);
+  let y=225;
+  for(const [key,title] of [['black','الفريق الأسود'],['white','الفريق الأبيض']]){
+   c.fillStyle='#4fd1bb';c.font='bold 40px Tahoma, sans-serif';c.fillText(title,1000,y);y+=55;
+   c.fillStyle='#e6f6fa';c.font='29px Tahoma, sans-serif';
+   for(const [i,id] of (teamState[key]||[]).entries()){
+    const p=players.find(x=>x.id===id);
+    c.fillText((i+1)+' - '+(p?.name||'لاعب')+' - '+(i<8?'أساسي':'احتياط'),1000,y);y+=39;
+   }
+   c.fillText('حارس الملعب',1000,y);y+=92;
+  }
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+  if(!blob)throw new Error('تعذر تجهيز الصورة');
+  const file=new File([blob],'tasjeel-teams.png',{type:'image/png'});
+  if(navigator.share && navigator.canShare?.({files:[file]})){
+   try{await navigator.share({files:[file],title:'تشكيلة المباراة'});return}
+   catch(e){if(e.name==='AbortError')return}
+  }
+  const url=URL.createObjectURL(blob);
+  // Open image directly on iPhone so the user can long-press and Save to Photos.
+  const win=window.open(url,'_blank');
+  if(!win){
+   const a=document.createElement('a');a.href=url;a.download='tasjeel-teams.png';document.body.append(a);a.click();a.remove();
+   notify('إذا ما نزلت الصورة، افتح الموقع في Safari واضغط حفظ صورة التشكيلة.',false);
+  }else{notify('تم فتح الصورة. على الآيفون اضغط مطولاً على الصورة ثم حفظ في الصور.');}
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+ }catch(e){notify('تعذر تجهيز صورة التشكيلة: '+e.message,true)}finally{btn.disabled=false}
+};
 $('saveResults').onclick=async()=>{if(!isAdmin()||!match?.round)return;const black=Number($('blackGoals').value),white=Number($('whiteGoals').value);if(!Number.isInteger(black)||!Number.isInteger(white)||black<0||white<0||black>99||white>99)return notify('النتيجة غير صحيحة.',true);try{await setDoc(doc(db,'matchResults',match.round),{round:match.round,black,white,scorers:$('scorersText').value.slice(0,2000),mvpId:$('mvpSelect').value,mvpName:roundPlayers().find(p=>p.id===$('mvpSelect').value)?.name||'',updatedAt:serverTimestamp(),savedBy:user.uid});notify('تم نشر النتيجة وأفضل لاعب.')}catch(e){notify('تعذر حفظ النتيجة: '+e.message,true)}};
 function drawResults(){const e=$('publicResults');if(!resultState){e.textContent='لم تُنشر نتيجة المباراة بعد.';return}e.textContent=`⚫ الأسود ${resultState.black} — ${resultState.white} الأبيض ⚪\n🏆 أفضل لاعب: ${resultState.mvpName||'لم يُحدد'}\n⚽ الهدافون: ${resultState.scorers||'لم تُسجل أسماء'}`}
 let roundListening='';function syncRoundExtras(){const round=match?.round||'';if(round===roundListening)return;roundListening=round;stopTeam();stopResult();teamState=null;resultState=null;drawPublished();drawResults();if(!round)return;stopTeam=onSnapshot(doc(db,'publishedTeams',round),d=>{teamState=d.exists()?d.data():null;drawPublished()},()=>{});stopResult=onSnapshot(doc(db,'matchResults',round),d=>{resultState=d.exists()?d.data():null;drawResults()},()=>{})}
