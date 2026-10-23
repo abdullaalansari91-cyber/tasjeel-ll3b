@@ -803,7 +803,7 @@ let roundListening='';function syncRoundExtras(){const round=match?.round||'';if
 function drawArchiveDeletes(){const root=$('archiveDeleteList');root.replaceChildren();if(!isAdmin())return;for(const a of archiveDocs){const row=document.createElement('div');row.className='line';const name=document.createElement('span');name.textContent=(a.date||'مباراة')+' — '+(a.place||'');const btn=document.createElement('button');btn.className='danger small';btn.textContent='حذف نهائي';btn.onclick=async()=>{const round=a.round;if(!round||!confirm('حذف هذه المباراة من الأرشيف نهائياً؟'))return;try{const batch=writeBatch(db);batch.delete(doc(db,'matchArchive',round));batch.delete(doc(db,'publicArchive',round));await batch.commit();notify('تم حذف المباراة من الأرشيف.')}catch(e){notify('تعذر حذف الأرشيف: '+e.message,true)}};row.append(name,btn);root.append(row)}}
 
 setInterval(render,30000);render();
-if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
+
 </script><script>
 // Dashboard navigation is independent from Firebase logic.
 (function(){
@@ -830,4 +830,28 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').cat
  document.getElementById('editCapacity')?.addEventListener('change',updateSummary);
  updateSummary();
 })();
-</script><nav aria-label="التنقل السريع" id="bottomNav"><button aria-label="الرئيسية" class="bottom-nav-item" data-bottom-page="home" type="button"><span class="bottom-icon">⌂</span><span class="bottom-label">الرئيسية</span></button><button aria-label="التسجيل" class="bottom-nav-item" data-bottom-page="register" type="button"><span class="bottom-icon">✎</span><span class="bottom-label">التسجيل</span></button><button aria-label="اللاعبون" class="bottom-nav-item" data-bottom-page="roster" type="button"><span class="bottom-icon">♟</span><span class="bottom-label">اللاعبون</span></button><button aria-label="الأرشيف" class="bottom-nav-item" data-bottom-page="archive" type="button"><span class="bottom-icon">▤</span><span class="bottom-label">الأرشيف</span></button><button aria-label="المزيد" class="bottom-nav-item" data-bottom-page="more" type="button"><span class="bottom-icon">☰</span><span class="bottom-label">المزيد</span></button></nav></body></html>
+</script><nav aria-label="التنقل السريع" id="bottomNav"><button aria-label="الرئيسية" class="bottom-nav-item" data-bottom-page="home" type="button"><span class="bottom-icon">⌂</span><span class="bottom-label">الرئيسية</span></button><button aria-label="التسجيل" class="bottom-nav-item" data-bottom-page="register" type="button"><span class="bottom-icon">✎</span><span class="bottom-label">التسجيل</span></button><button aria-label="اللاعبون" class="bottom-nav-item" data-bottom-page="roster" type="button"><span class="bottom-icon">♟</span><span class="bottom-label">اللاعبون</span></button><button aria-label="الأرشيف" class="bottom-nav-item" data-bottom-page="archive" type="button"><span class="bottom-icon">▤</span><span class="bottom-label">الأرشيف</span></button><button aria-label="المزيد" class="bottom-nav-item" data-bottom-page="more" type="button"><span class="bottom-icon">☰</span><span class="bottom-label">المزيد</span></button></nav><div id="appUpdateBanner" role="status" hidden style="position:fixed;bottom:calc(82px + env(safe-area-inset-bottom,0px));left:12px;right:12px;z-index:1000;max-width:650px;margin:auto;background:#173c50;color:#f4ffff;border:1px solid #54bfa8;border-radius:16px;padding:13px;box-shadow:0 10px 35px #0008;display:none;align-items:center;gap:12px;justify-content:space-between"><span>🔄 تحديث جديد لتسجيل للعب متوفر</span><button type="button" id="applyAppUpdate" style="white-space:nowrap">تحديث الآن</button></div><script>
+(function(){
+ const BUILD='2.0-pwa-20261023-1';
+ const banner=()=>document.getElementById('appUpdateBanner');
+ let waiting=null,refreshing=false;
+ function offer(worker){waiting=worker;const el=banner();if(el){el.hidden=false;el.style.display='flex';}}
+ function reloadForNewBuild(){if(refreshing)return;refreshing=true;location.reload();}
+ window.addEventListener('load',async()=>{
+  if(!('serviceWorker' in navigator))return;
+  try{
+   const reg=await navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'});
+   if(reg.waiting&&navigator.serviceWorker.controller)offer(reg.waiting);
+   reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)offer(w);});});
+   navigator.serviceWorker.addEventListener('controllerchange',reloadForNewBuild);
+   const check=()=>{if(navigator.onLine)reg.update().catch(()=>{});};
+   document.addEventListener('visibilitychange',()=>{if(!document.hidden)check();});
+   window.addEventListener('focus',check);
+   window.addEventListener('online',check);
+   check();
+   const button=document.getElementById('applyAppUpdate');
+   button?.addEventListener('click',()=>{if(waiting){button.disabled=true;waiting.postMessage({type:'SKIP_WAITING'});}else location.reload();});
+  }catch(err){console.warn('App update service unavailable',err);}
+ });
+})();
+</script></body></html>
