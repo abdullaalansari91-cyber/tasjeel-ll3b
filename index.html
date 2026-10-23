@@ -172,6 +172,7 @@ body.light #bottomNav .bottom-nav-item{color:#496677}
 body.light #bottomNav .bottom-nav-item.active{background:#dcf5ea;color:#14654f;border-color:#9edbc5}
 @media(min-width:950px){#bottomNav{left:calc((100vw - 900px)/2);right:calc((100vw - 900px)/2);border:1px solid #31556a;border-radius:20px 20px 0 0;padding-left:10px;padding-right:10px}}
 
+.captain-registrar-label{margin-top:5px;font-size:13px;line-height:1.5;color:#a9c8d8}body.light .captain-registrar-label{color:#526f7f}
 /* v2.0: one clear home card, bottom navigation is the only main menu control */
 header #menuToggle{display:none!important}
 header{justify-content:space-between}
@@ -555,7 +556,14 @@ function registrationOpen(){
 }
 function capacity(){const n=Number(match?.capacity);return Number.isInteger(n)&&n>=16&&n<=24?n:20}
 function visible(){return match&&Date.now()<new Date(match.date+'T'+match.end+':00+04:00').getTime()+86400000?players.filter(x=>x.round===match.round).sort((a,b)=>a.created-b.created||a.id.localeCompare(b.id)):[]}
-function renderList(id,arr,offset){const box=$(id);box.replaceChildren();if(!arr.length){box.textContent='لا يوجد لاعبون حالياً';box.className='muted';return}box.className='';arr.forEach((p,i)=>{let line=document.createElement('div');line.className='line';let detail=document.createElement('div');let number=document.createElement('span');number.className='num';number.textContent=(offset+i)+' — ';let strong=document.createElement('strong');strong.textContent=p.name;let small=document.createElement('div');small.className='muted';small.textContent=p.positions.join('، ');detail.append(number,strong,small);line.append(detail);if((isAdmin()||p.owner===user?.uid) && (isAdmin() || (p.editCount||0)<1) && (isAdmin()||registrationOpen())){const editBtn=document.createElement('button');editBtn.className='alt small';editBtn.textContent='✏️ تعديل'+(!isAdmin()?' (مرة واحدة)':'');editBtn.onclick=async()=>{const newNameInput=prompt('عدّل اسم اللاعب:',p.name);if(newNameInput===null)return;const newName=newNameInput.trim().replace(/\s+/g,' ');if(newName.length<2||newName.length>60)return notify('الاسم من 2 إلى 60 حرف.',true);const positionsInput=prompt('عدّل المراكز وافصل بينها بفاصلة، مثال: وسط، مدافع',p.positions.join('، '));if(positionsInput===null)return;const newPositions=[...new Set(positionsInput.split(/[,،]/).map(x=>x.trim()).filter(Boolean))];const allowed=['مهاجم','وسط','مدافع','ظهير','جناح','شامل'];if(!newPositions.length||newPositions.length>6||newPositions.some(x=>!allowed.includes(x)))return notify('اختر مركزاً صحيحاً على الأقل.',true);if(visible().some(x=>x.id!==p.id&&x.name.trim().toLocaleLowerCase('ar')===newName.toLocaleLowerCase('ar')))return notify('الاسم موجود في القائمة.',true);if(newName===p.name&&JSON.stringify(newPositions)===JSON.stringify(p.positions))return notify('ما تغيّر شيء، فرصة التعديل محفوظة.');if(!confirm('تأكيد التعديل؟ اللاعب يقدر يعدّل هذا التسجيل مرة واحدة فقط.'))return;editBtn.disabled=true;try{await updateDoc(doc(db,'registrations',p.id),{name:newName,positions:newPositions,editCount:(p.editCount||0)+1,editedAt:serverTimestamp()});notify('تم تعديل التسجيل بنجاح.')}catch(e){notify('تعذر التعديل: '+e.message,true)}finally{editBtn.disabled=false}};line.append(editBtn)}if(isAdmin()||p.owner===user?.uid){let btn=document.createElement('button');btn.textContent='حذف';btn.className='danger small';btn.onclick=async()=>{if(!confirm('حذف '+p.name+'؟'))return;try{const batch=writeBatch(db);batch.delete(doc(db,'registrations',p.id));batch.set(doc(db,'activityLog','delete_'+p.id),{kind:'delete',registrationId:p.id,name:p.name,round:p.round,owner:p.owner,actor:user.uid,createdAt:serverTimestamp()});await batch.commit();notify('تم حذف '+p.name)}catch(e){notify('تعذر الحذف: '+e.message,true)}};line.append(btn)}box.append(line)})}
+function renderList(id,arr,offset){const box=$(id);box.replaceChildren();if(!arr.length){box.textContent='لا يوجد لاعبون حالياً';box.className='muted';return}box.className='';arr.forEach((p,i)=>{let line=document.createElement('div');line.className='line';let detail=document.createElement('div');let number=document.createElement('span');number.className='num';number.textContent=(offset+i)+' — ';let strong=document.createElement('strong');strong.textContent=p.name;let small=document.createElement('div');small.className='muted';small.textContent=p.positions.join('، ');detail.append(number,strong,small);if(isAdmin()){const registrar=document.createElement('div');registrar.className='muted captain-registrar-label';const registeredBy=profiles[p.owner]?.name||registrarInfo[p.id]?.registrarName||'غير معروف (تسجيل قديم)';registrar.textContent='👤 سجّله: '+registeredBy;detail.append(registrar)}line.append(detail);if((isAdmin()||p.owner===user?.uid) && (isAdmin() || (p.editCount||0)<1) && (isAdmin()||registrationOpen())){const editBtn=document.createElement('button');editBtn.className='alt small';editBtn.textContent='✏️ تعديل'+(!isAdmin()?' (مرة واحدة)':'');editBtn.onclick=async()=>{const newNameInput=prompt('عدّل اسم اللاعب:',p.name);if(newNameInput===null)return;const newName=newNameInput.trim().replace(/\s+/g,' ');if(newName.length<2||newName.length>60)return notify('الاسم من 2 إلى 60 حرف.',true);const positionsInput=prompt('عدّل المراكز وافصل بينها بفاصلة، مثال: وسط، مدافع',p.positions.join('، '));if(positionsInput===null)return;const newPositions=[...new Set(positionsInput.split(/[,،]/).map(x=>x.trim()).filter(Boolean))];const allowed=['مهاجم','وسط','مدافع','ظهير','جناح','شامل'];if(!newPositions.length||newPositions.length>6||newPositions.some(x=>!allowed.includes(x)))return notify('اختر مركزاً صحيحاً على الأقل.',true);if(visible().some(x=>x.id!==p.id&&x.name.trim().toLocaleLowerCase('ar')===newName.toLocaleLowerCase('ar')))return notify('الاسم موجود في القائمة.',true);if(newName===p.name&&JSON.stringify(newPositions)===JSON.stringify(p.positions))return notify('ما تغيّر شيء، فرصة التعديل محفوظة.');if(!confirm('تأكيد التعديل؟ اللاعب يقدر يعدّل هذا التسجيل مرة واحدة فقط.'))return;editBtn.disabled=true;try{await updateDoc(doc(db,'registrations',p.id),{name:newName,positions:newPositions,editCount:(p.editCount||0)+1,editedAt:serverTimestamp()});notify('تم تعديل التسجيل بنجاح.')}catch(e){notify('تعذر التعديل: '+e.message,true)}finally{editBtn.disabled=false}};line.append(editBtn)}if(isAdmin()||p.owner===user?.uid){let btn=document.createElement('button');btn.textContent='حذف';btn.className='danger small';btn.onclick=async()=>{if(!confirm('حذف '+p.name+'؟'))return;try{const batch=writeBatch(db);batch.delete(doc(db,'registrations',p.id));batch.set(doc(db,'activityLog','delete_'+p.id),{kind:'delete',registrationId:p.id,name:p.name,round:p.round,owner:p.owner,actor:user.uid,createdAt:serverTimestamp()});await batch.commit();notify('تم حذف '+p.name)}catch(e){notify('تعذر الحذف: '+e.message,true)}};line.append(btn)}box.append(line)})}
+function refreshCaptainRosterLabels(){
+ if(!isAdmin())return;
+ const list=visible();
+ renderList('mainList',list.slice(0,16),1);
+ renderList('reserveList',list.slice(16,capacity()),17);
+ renderList('waitList',list.slice(capacity()),capacity()+1);
+}
 function renderRegistrarLog(){
  const root=$('registrarLog');root.replaceChildren();
  if(!isAdmin())return;
@@ -670,7 +678,7 @@ function syncProfiles(){
  },e=>notify('تعذر قراءة اسم المسؤول: '+e.message,true));
  if(isAdmin()){
   stopProfiles=onSnapshot(collection(db,'registrarProfiles'),snap=>{
-   profiles=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()]));renderRegistrarLog();renderProfiles();
+   profiles=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()]));renderRegistrarLog();renderProfiles();refreshCaptainRosterLabels();
   },e=>notify('تعذر قراءة أسماء المسؤولين: '+e.message,true));
  }
 }
@@ -679,7 +687,7 @@ function syncRegistrarListener(){
  if(isAdmin()){
   registrarListening=true;
   stopRegistrar=onSnapshot(collection(db,'registrationAttribution'),snap=>{
-   registrarInfo=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()]));renderRegistrarLog();
+   registrarInfo=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()]));renderRegistrarLog();refreshCaptainRosterLabels();
   },e=>{const el=$('registrarLog');if(el)el.textContent='تعذر قراءة السجل: '+e.message;});
  }
  renderRegistrarLog();
