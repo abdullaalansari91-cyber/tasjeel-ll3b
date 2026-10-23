@@ -1,5 +1,5 @@
 /* تسجيل للعب: network-first pages, static asset fallback only. */
-const CACHE = 'tasjeel-static-2.0-gold-logo-1';
+const CACHE = 'tasjeel-static-2.0-first-registrar-20261023-3';
 const ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 self.addEventListener('install', event => {
  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
